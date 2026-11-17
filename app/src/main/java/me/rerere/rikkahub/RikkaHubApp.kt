@@ -58,6 +58,7 @@ const val CHAT_LIVE_UPDATE_NOTIFICATION_CHANNEL_ID = "chat_live_update"
 const val WEB_SERVER_NOTIFICATION_CHANNEL_ID = "web_server"
 const val MEDIA_CREATION_NOTIFICATION_CHANNEL_ID = "media_creation"
 const val MEMORY_DREAM_NOTIFICATION_CHANNEL_ID = "memory_dream"
+const val PHONE_SCREEN_CAPTURE_NOTIFICATION_CHANNEL_ID = "phone_screen_capture"
 
 class RikkaHubApp : Application() {
     override fun onCreate() {
@@ -302,6 +303,15 @@ class RikkaHubApp : Application() {
             .setShowBadge(false)
             .build()
         notificationManager.createNotificationChannel(memoryDreamChannel)
+
+        // Android 11 以下 Phone Use 靠录屏取帧，系统要求全程挂一个前台通知
+        val phoneScreenCaptureChannel = NotificationChannelCompat
+            .Builder(PHONE_SCREEN_CAPTURE_NOTIFICATION_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
+            .setName(getString(R.string.phone_use_screen_capture_channel))
+            .setVibrationEnabled(false)
+            .setShowBadge(false)
+            .build()
+        notificationManager.createNotificationChannel(phoneScreenCaptureChannel)
     }
 
     override fun onTerminate() {

@@ -1829,6 +1829,12 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="assistant_page_local_tools_phone_use_service_off">无障碍服务已关闭。请将此开关关闭再打开，以进入设置。若该选项在系统中呈灰色不可用，请先在\"应用信息\"中为此应用允许受限设置。并且将应用的自启动开关打开，可以避免无障碍权限被频繁收回。</string>
   <string name="assistant_page_local_tools_phone_use_enable_service">在无障碍设置中开启 \"RikkaHub Phone Use\"</string>
   <string name="assistant_page_local_tools_phone_use_floating_window_required">请先开启后台悬浮窗</string>
+  <string name="assistant_page_local_tools_phone_use_screen_capture_title">屏幕捕获</string>
+  <string name="assistant_page_local_tools_phone_use_screen_capture_desc">Android 11 及以下没有无障碍截图接口，授权录屏后 AI 才能截图。开启期间状态栏会一直显示录屏提示，应用重启后需要重新开启。</string>
+  <string name="assistant_page_local_tools_phone_use_screen_capture_denied">屏幕捕获未开启，AI 将无法截图</string>
+  <string name="phone_use_screen_capture_running">屏幕捕获已开启</string>
+  <string name="phone_use_screen_capture_running_desc">Phone Use 从这次录屏中读取截图，点击返回应用。</string>
+  <string name="phone_use_screen_capture_channel">Phone Use 屏幕捕获</string>
   <string name="phone_use_accessibility_description">启用 Phone Use 工具后，允许 AI 助手读取屏幕并为您执行点按、滑动和文本输入。除非助手正在运行您请求的任务，否则不会执行任何操作。</string>
   <string name="setting_display_page_auto_compress_title">自动压缩上下文</string>
   <string name="setting_display_page_auto_compress_desc">回复后，当上下文使用率超过设定比例时，自动将历史记录压缩为摘要</string>

@@ -219,6 +219,10 @@ private class PhoneUseSession(
 
             "screenshot" -> {
                 ensureOperable(controller)
+                // Android 11 以下没有无障碍截图接口，要用户额外开着录屏才有画面
+                check(manager.screenshotAvailable) {
+                    "Screenshots are not available on this phone. Use observe and work from the element list instead."
+                }
                 val screen = capture(controller)
                 val bytes = hidingOverlays { controller.screenshot(SCREENSHOT_MAX_SIDE) }
                 listOf(

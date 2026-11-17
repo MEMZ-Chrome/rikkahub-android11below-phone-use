@@ -50,15 +50,30 @@ class PhoneUseAccessibilityService : AccessibilityService(), PhoneController {
     override fun onServiceConnected() {
         Log.i(TAG, "onServiceConnected")
         manager.attach(this)
+        // 录屏取帧的服务和本服务同进程，用户授权后由这里启动
+        manager.screenCapture = object : PhoneScreenCapture {
+            override fun start(resultCode: Int, data: Intent) {
+                PhoneScreenCaptureService.start(this@PhoneUseAccessibilityService, resultCode, data)
+            }
+
+            override fun stop() {
+                PhoneScreenCaptureService.stop(this@PhoneUseAccessibilityService)
+            }
+        }
+        PhoneScreenCaptureService.stateListener = { manager.setScreenCaptureActive(it) }
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         manager.detach(this)
+        manager.stopScreenCapture()
+        manager.screenCapture = null
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         manager.detach(this)
+        manager.stopScreenCapture()
+        manager.screenCapture = null
         indicator.dismiss()
         super.onDestroy()
     }
@@ -197,7 +212,16 @@ class PhoneUseAccessibilityService : AccessibilityService(), PhoneController {
     // ---- 截图 ----
 
     override suspend fun screenshot(maxSide: Int): ByteArray {
-        check(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { "Screenshots need Android 11 or later." }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // 11 以下没有无障碍截图接口，只能用用户授权过的录屏
+            check(manager.screenCaptureActive.value) {
+                "Screenshots are not available on this phone. Ask the user to turn on \"Screen capture\" " +
+                    "under Settings > Assistant > Local tools first, or use observe instead."
+            }
+            return checkNotNull(PhoneScreenCaptureService.capture(maxSide)) {
+                "Screen capture is still starting. Try again in a moment."
+            }
+        }
         val bitmap = try {
             takeScreenshot()
         } catch (e: ScreenshotIntervalException) {

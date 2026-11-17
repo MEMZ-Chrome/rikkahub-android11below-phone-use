@@ -1,6 +1,11 @@
 package me.rerere.rikkahub.ui.pages.assistant.detail
 
 import android.Manifest
+import android.app.Activity
+import android.media.projection.MediaProjectionManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.ui.toast.ToastType
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Calendar03
+import me.rerere.hugeicons.stroke.Camera01
 import me.rerere.hugeicons.stroke.ChartLineData01
 import me.rerere.hugeicons.stroke.ClipboardPaste
 import me.rerere.hugeicons.stroke.Clock01
@@ -111,6 +117,21 @@ private fun AssistantLocalToolContent(
     val floatingWindowRequiredText =
         stringResource(R.string.assistant_page_local_tools_phone_use_floating_window_required)
     val enableServiceText = stringResource(R.string.assistant_page_local_tools_phone_use_enable_service)
+    // Android 11 以下没有无障碍截图接口，用户授权录屏后才有画面
+    val screenCaptureActive = phoneUseManager.screenCaptureActive.collectAsStateWithLifecycle().value
+    val screenCaptureRequired = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+    val screenCaptureDeniedText =
+        stringResource(R.string.assistant_page_local_tools_phone_use_screen_capture_denied)
+    val screenCaptureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val data = result.data
+        if (result.resultCode != Activity.RESULT_OK || data == null ||
+            !phoneUseManager.startScreenCapture(result.resultCode, data)
+        ) {
+            toaster.show(message = screenCaptureDeniedText, type = ToastType.Warning)
+        }
+    }
 
     val calendarPermissionState = rememberPermissionState(
         permissions = setOf(
@@ -262,7 +283,7 @@ private fun AssistantLocalToolContent(
                 title = R.string.assistant_page_local_tools_chart_display_title,
                 description = R.string.assistant_page_local_tools_chart_display_desc,
             )
-            // 只有 github 渠道的 Android 11 及以上才有
+            // 只有 github 渠道才有
             if (PhoneUseManager.isSupported) {
                 toolItem(
                     option = LocalToolOption.PhoneUse,
@@ -281,6 +302,41 @@ private fun AssistantLocalToolContent(
                         }
                     },
                 )
+                // Android 11 以下没有无障碍截图接口，在这里让用户手动授权录屏取帧
+                if (screenCaptureRequired && LocalToolOption.PhoneUse in assistant.localTools) {
+                    switchItem(
+                        checked = screenCaptureActive,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                context.getSystemService(MediaProjectionManager::class.java)
+                                    ?.let { screenCaptureLauncher.launch(it.createScreenCaptureIntent()) }
+                            } else {
+                                phoneUseManager.stopScreenCapture()
+                            }
+                        },
+                        leadingContent = {
+                            CardGroupIcon(
+                                icon = HugeIcons.Camera01,
+                                containerColor = if (screenCaptureActive) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
+                                contentColor = if (screenCaptureActive) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        },
+                        supportingContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_screen_capture_desc))
+                        },
+                        headlineContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_screen_capture_title))
+                        },
+                    )
+                }
             }
         }
     }

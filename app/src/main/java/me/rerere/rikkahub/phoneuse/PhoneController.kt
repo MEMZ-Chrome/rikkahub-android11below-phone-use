@@ -1,6 +1,7 @@
 package me.rerere.rikkahub.phoneuse
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,6 +75,16 @@ interface PhoneController {
 }
 
 /**
+ * 录屏取帧，给 Android 11 以下的 [PhoneController.screenshot] 用。
+ * 授权只能由用户在界面上触发，实现放在 github 渠道。
+ */
+interface PhoneScreenCapture {
+    fun start(resultCode: Int, data: Intent)
+
+    fun stop()
+}
+
+/**
  * 后台悬浮窗是否真的能显示：开关打开并且有悬浮窗权限。
  * Phone Use 要求它开着，用户才看得到 AI 在做什么、随时能停。
  */
@@ -83,13 +94,39 @@ fun isFloatingChatWindowOn(context: Context, settings: Settings): Boolean =
 /** 无障碍服务连接后把自己登记在这里，工具和设置页从这里拿 */
 class PhoneUseManager {
     companion object {
-        /** Play 版没有无障碍服务；截图和回车键是 Android 11 才有的接口，更低的版本不提供 */
+        /** Play 版没有无障碍服务。截图和回车键要用 Android 11 的接口，
+         * 更低的版本只能读元素列表，截图要用户额外开录屏 */
         val isSupported: Boolean
-            get() = !BuildConfig.IS_PLAY_STORE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            get() = !BuildConfig.IS_PLAY_STORE
     }
 
     private val _controller = MutableStateFlow<PhoneController?>(null)
     val controller: StateFlow<PhoneController?> = _controller.asStateFlow()
+
+    /** 录屏取帧的入口，无障碍服务连上后填进来；服务没开时为空 */
+    @Volatile
+    var screenCapture: PhoneScreenCapture? = null
+
+    private val _screenCaptureActive = MutableStateFlow(false)
+    val screenCaptureActive: StateFlow<Boolean> = _screenCaptureActive.asStateFlow()
+
+    /** 有没有截图来源：Android 11 起直接调系统接口，更低版本要用户开着录屏 */
+    val screenshotAvailable: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R || _screenCaptureActive.value
+
+    fun startScreenCapture(resultCode: Int, data: Intent): Boolean {
+        val capture = screenCapture ?: return false
+        capture.start(resultCode, data)
+        return true
+    }
+
+    fun stopScreenCapture() {
+        screenCapture?.stop()
+    }
+
+    fun setScreenCaptureActive(active: Boolean) {
+        _screenCaptureActive.value = active
+    }
 
     private val _acting = MutableStateFlow(false)
 

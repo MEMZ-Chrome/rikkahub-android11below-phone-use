@@ -1,0 +1,79 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 与 Android Studio 自带的 JetBrains Runtime 21 保持一致
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+        env:
+          # jetbrains 安装器通过 GitHub API 查询版本，带上 token 避免被限流
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # :web 模块的 preBuild 会执行 `pnpm run build` 构建前端，必须准备好 Node + pnpm
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web-ui/pnpm-lock.yaml
+
+      # gradle 的 buildWebUi 任务只跑 build 不跑 install，需在此提前安装依赖
+      - name: Install web-ui dependencies
+        working-directory: web-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleGithubDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rikkahub-phone-use-debug
+          path: app/build/outputs/apk/github/debug/*.apk
+          retention-days: 30
+
+      # 打 tag 时顺手发一个 Release，不用登录就能直接下 APK
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: app/build/outputs/apk/github/debug/*.apk
+          body: |
+            基于 RikkaHub `${{ github.sha }}` 构建的调试版 APK（applicationId 带 `.debug` 后缀，可与官方版共存）。
+
+            - 通用包：`app-universal-github-debug.apk`
+            - 架构包：`app-arm64-v8a-github-debug.apk` / `app-x86_64-github-debug.apk`

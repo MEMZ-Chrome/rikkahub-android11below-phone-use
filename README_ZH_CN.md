@@ -17,12 +17,18 @@
 
 ## 🚀 下载
 
-🔗 [前往官网下载](https://rikka-ai.com/download)（推荐）
+🔗 [前往 Releases 下载 APK](../../releases/latest)
 
-🔗 [前往 Google Play 下载](https://play.google.com/store/apps/details?id=me.rerere.rikkahub)
+由 GitHub Actions 在每次推送到 `master` 时构建。APK 是 debug 版，applicationId 带 `.debug` 后缀，
+可以和官方版共存。
 
-> [!WARNING]
-> RikkaHub 存在许多 fork 版本，fork 版本出现问题与 RikkaHub 无关，请谨慎使用 fork 版本，避免隐私泄露或者过度索要权限问题。
+> [!NOTE]
+> 这是 [RikkaHub](https://github.com/rikkahub/rikkahub) 的个人 fork，与上游无关。
+> 内容就是上游 `master` 加一处改动：**Android 8.0 – 10 也能用 Phone Use**。这些系统没有无障碍截图接口，
+> 截图改为走用户手动开启的录屏（设置 → 助手 → 本地工具 → Phone Use → 屏幕捕获），开启期间状态栏会显示录屏提示。
+>
+> 另外移除了 Firebase 统计和崩溃上报，这样不用任何私有密钥就能从源码构建。
+> 其余都是上游代码；这个 fork 的问题请不要提给上游。
 
 ## 💖 赞助商
 
