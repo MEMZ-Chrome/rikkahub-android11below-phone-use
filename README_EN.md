@@ -20,8 +20,8 @@ A native Android LLM chat client that supports switching between different provi
 
 🔗 [Download the APK from Releases](../../releases/latest)
 
-Built by GitHub Actions on every push to `master`. The APK is a debug build with a `.debug` applicationId
-suffix, so it installs alongside the official RikkaHub.
+Built by GitHub Actions on every push to `master`. Updates install over the previous build, and the package
+is separate from the official RikkaHub so both can be installed at once.
 
 ## ✨ Features
 
@@ -49,8 +49,8 @@ Open the project in [Android Studio](https://developer.android.com/studio). No `
 needed (the requirement from upstream's README does not apply here).
 
 ```bash
-# Build the debug APK
-./gradlew assembleGithubDebug
+# Build the APK
+./gradlew assembleGithubRelease
 ```
 
 Tech stack (same as upstream):

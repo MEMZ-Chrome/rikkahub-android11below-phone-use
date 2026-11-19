@@ -20,8 +20,7 @@
 
 🔗 [前往 Releases 下载 APK](../../releases/latest)
 
-由 GitHub Actions 在每次推送到 `master` 时构建。APK 是 debug 版，applicationId 带 `.debug` 后缀，可以和
-官方版共存，互不覆盖。
+由 GitHub Actions 在每次推送到 `master` 时构建，可直接覆盖安装升级。包名与官方版不同，两者可以共存，互不覆盖。
 
 ## ✨ 功能
 
@@ -47,8 +46,8 @@
 `google-services.json`（上游 README 里那条要求在本项目不适用）。
 
 ```bash
-# 编译 debug APK
-./gradlew assembleGithubDebug
+# 编译 APK
+./gradlew assembleGithubRelease
 ```
 
 技术栈与上游一致：

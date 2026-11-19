@@ -53,16 +53,16 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Build debug APK
+      - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleGithubDebug --stacktrace
+          ./gradlew assembleGithubRelease --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rikkahub-plus-debug
-          path: app/build/outputs/apk/github/debug/*.apk
+          name: rikkahub-plus
+          path: app/build/outputs/apk/github/release/*.apk
           retention-days: 30
 
       # 打 tag 时顺手发一个 Release，不用登录就能直接下 APK
@@ -71,9 +71,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
-          files: app/build/outputs/apk/github/debug/*.apk
+          files: app/build/outputs/apk/github/release/*.apk
           body: |
-            基于 RikkaHub Plus `${{ github.sha }}` 构建的调试版 APK（applicationId 带 `.debug` 后缀，可与官方版共存）。
+            基于 RikkaHub Plus `${{ github.sha }}` 构建的 APK（包名 `me.memzchrome.rikkahubplus`，可与官方版共存）。
 
-            - 通用包：`app-universal-github-debug.apk`
-            - 架构包：`app-arm64-v8a-github-debug.apk` / `app-x86_64-github-debug.apk`
+            - 通用包：`app-universal-github-release.apk`
+            - 架构包：`app-arm64-v8a-github-release.apk` / `app-x86_64-github-release.apk`

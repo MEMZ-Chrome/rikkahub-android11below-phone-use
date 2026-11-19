@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "me.rerere.rikkahub"
+        applicationId = "me.memzchrome.rikkahubplus"
         minSdk = 26
         targetSdk = 37
         versionCode = 197
@@ -48,10 +48,17 @@ android {
 
     signingConfigs {
         create("release") {
-            val localProperties = Properties()
+            // 仓库自带的签名，CI 和本地都能直接产出可覆盖安装的包（这把 key 只用来签这个应用，公开无妨）。
+            // 想换成自己的签名，在根目录 local.properties 里写下面四项即可覆盖。
+            storeFile = rootProject.file("keystore/rikkahub-plus.jks")
+            storePassword = "rikkahubplus"
+            keyAlias = "rikkahubplus"
+            keyPassword = "rikkahubplus"
+
             val localPropertiesFile = rootProject.file("local.properties")
 
             if (localPropertiesFile.exists()) {
+                val localProperties = Properties()
                 localProperties.load(FileInputStream(localPropertiesFile))
 
                 val storeFilePath = localProperties.getProperty("storeFile")
@@ -81,7 +88,6 @@ android {
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
         }
         debug {
-            applicationIdSuffix = ".debug"
             buildConfigField("String", "VERSION_NAME", "\"${android.defaultConfig.versionName}\"")
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
         }
