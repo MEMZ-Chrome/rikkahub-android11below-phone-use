@@ -23,11 +23,16 @@ applicationId suffix, so it can sit next to the official RikkaHub without confli
 
 > [!NOTE]
 > This is a personal fork of [RikkaHub](https://github.com/rikkahub/rikkahub), not affiliated with upstream.
-> It is upstream `master` plus one change: **Phone Use works on Android 8.0 – 10**, where the system has no
-> accessibility screenshot API. Screenshots there come from an opt-in screen recording (Settings → Assistant →
-> Local tools → Phone Use → Screen capture), which keeps a recording notice in the status bar while it is on.
+> It is upstream `master` plus these changes:
 >
-> Firebase analytics/crashlytics are removed so the project builds from source without any private key.
+> - **Phone Use works on Android 8.0 – 10**, where the system has no accessibility screenshot API. Screenshots
+>   there come from an opt-in screen recording (Settings → Assistant → Local tools → Phone Use → Screen capture),
+>   which keeps a recording notice in the status bar while it is on.
+> - **Blocked apps are configurable.** Upstream hard-codes a payment/banking blocklist (including WeChat),
+>   which cannot be turned off. Here nothing is blocked by default and you pick the apps yourself in
+>   Settings → Assistant → Local tools → Phone Use → Blocked apps.
+> - Firebase analytics/crashlytics are removed so the project builds from source without any private key.
+>
 > Everything else is upstream code; bug reports for this fork should not go to upstream.
 
 ## 💖 Sponsors

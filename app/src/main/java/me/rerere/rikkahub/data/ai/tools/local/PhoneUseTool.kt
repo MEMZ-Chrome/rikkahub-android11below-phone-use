@@ -42,26 +42,6 @@ private const val LONG_PRESS_MS = 700L
 private const val SWIPE_MS = 350L
 private const val SCREENSHOT_MAX_SIDE = 1568
 
-/**
- * 不允许 AI 操作的应用：支付和银行类
- * 不能打开，从别的应用跳转进去后也不能读屏和操作，只能返回或回到桌面
- */
-internal val PHONE_USE_BLOCKED_APPS = setOf(
-    "com.eg.android.AlipayGphone", // 支付宝
-    "com.unionpay", // 云闪付
-    "com.tencent.mm", // 微信
-    "com.paypal.android.p2pmobile", // PayPal
-    "com.google.android.apps.walletnfcrel", // Google Wallet
-    "com.google.android.apps.nbu.paisa.user", // Google Pay
-    "com.icbc", // 工商银行
-    "com.chinamworld.main", // 建设银行
-    "com.android.bankabc", // 农业银行
-    "com.chinamworld.bocmbci", // 中国银行
-    "com.bankcomm.Bankcomm", // 交通银行
-    "cmb.pb", // 招商银行
-    "com.yitong.mbank.psbc", // 邮储银行
-)
-
 private val ACTIONS = listOf(
     "observe", "screenshot", "tap", "long_press", "swipe", "scroll", "type", "press", "open_app", "list_apps", "wait",
 )
@@ -73,15 +53,18 @@ fun phoneUseActionOf(input: String): String? = runCatching {
 
 /**
  * [saveScreenshot] 把 JPEG 存成聊天文件并返回地址；[isSelfInForeground] 判断本应用是否在前台，单测里替换。
+ * [blockedApps] 是用户在设置里禁用的包名，每次调用时重新读取；默认不限制任何应用。
  */
 internal fun buildPhoneUseTool(
     ownPackageName: String,
     manager: PhoneUseManager,
     saveScreenshot: (ByteArray) -> String,
     isFloatingWindowOn: () -> Boolean,
+    blockedApps: () -> Set<String> = { emptySet() },
     isSelfInForeground: suspend () -> Boolean = ::isAppInForeground,
 ): Tool {
-    val session = PhoneUseSession(ownPackageName, manager, saveScreenshot, isFloatingWindowOn, isSelfInForeground)
+    val session =
+        PhoneUseSession(ownPackageName, manager, saveScreenshot, isFloatingWindowOn, blockedApps, isSelfInForeground)
     return Tool(
         name = PHONE_USE_TOOL_NAME,
         description = """
@@ -93,8 +76,8 @@ internal fun buildPhoneUseTool(
             in both the element list and screenshots.
             Use screenshot only when the element list is not enough (images, canvas, games, custom views).
             This app itself cannot be operated; leave it with open_app or press home before acting.
-            Payment and banking apps are blocked: you cannot open, read or operate them. If a task ends up in one,
-            press back or home and tell the user to finish that step themselves.
+            The user may block apps in the app settings: blocked apps cannot be opened, read or operated.
+            If a task ends up in one, press back or home and tell the user to finish that step themselves.
             Stop and ask the user before irreversible steps such as paying, sending messages or deleting data,
             unless they already told you to do exactly that.
         """.trimIndent().replace("\n", " "),
@@ -159,6 +142,7 @@ private class PhoneUseSession(
     private val manager: PhoneUseManager,
     private val saveScreenshot: (ByteArray) -> String,
     private val isFloatingWindowOn: () -> Boolean,
+    private val blockedApps: () -> Set<String>,
     private val isSelfInForeground: suspend () -> Boolean,
 ) {
     // 模型可能一次发出多个调用，手势和元素编号都依赖顺序
@@ -177,17 +161,20 @@ private class PhoneUseSession(
             "Phone Use is not enabled. Ask the user to turn on \"RikkaHub Phone Use\" in the system accessibility settings."
         )
         when (val action = params.string("action") ?: error("action is required")) {
-            "list_apps" -> text(
-                controller.listApps()
-                    .filterNot { it.packageName in PHONE_USE_BLOCKED_APPS }
-                    .joinToString("\n") { "${it.label} (${it.packageName})" }
-            )
+            "list_apps" -> {
+                val blocked = blockedApps()
+                text(
+                    controller.listApps()
+                        .filterNot { it.packageName in blocked }
+                        .joinToString("\n") { "${it.label} (${it.packageName})" }
+                )
+            }
 
             "open_app" -> {
                 val app = resolveApp(controller, params.string("app") ?: error("app is required"))
                 check(app.packageName != ownPackageName) { "This app itself cannot be operated." }
-                check(app.packageName !in PHONE_USE_BLOCKED_APPS) {
-                    "${app.label} is blocked for safety. Tell the user to do this step themselves."
+                check(app.packageName !in blockedApps()) {
+                    "${app.label} is blocked in the settings. Tell the user to do this step themselves."
                 }
                 check(controller.openApp(app.packageName)) { "Failed to open ${app.label}" }
                 delay(OPEN_APP_SETTLE_MS)
@@ -325,19 +312,19 @@ private class PhoneUseSession(
     // 要看所有可见窗口：分屏或下拉通知栏时最上层是别的应用，被禁应用的界面照样会被读到、点到、截进图里
     private suspend fun ensureOperable(controller: PhoneController) {
         ensureNotSelf()
-        controller.visiblePackages().blocked()?.let { error(blockedMessage(it)) }
+        controller.visiblePackages().blocked(blockedApps())?.let { error(blockedMessage(it)) }
     }
 
     /** 读取并描述当前界面；到了被禁的应用里不把界面内容交给模型 */
     private suspend fun describeCurrent(controller: PhoneController): String {
         val screen = capture(controller)
-        return screen.packages.blocked()?.let(::blockedMessage) ?: describe(screen)
+        return screen.packages.blocked(blockedApps())?.let(::blockedMessage) ?: describe(screen)
     }
 
-    private fun Set<String>.blocked(): String? = firstOrNull { it in PHONE_USE_BLOCKED_APPS }
+    private fun Set<String>.blocked(blocked: Set<String>): String? = firstOrNull { it in blocked }
 
     private fun blockedMessage(packageName: String) =
-        "$packageName is now on screen and is blocked for safety: you cannot read or operate anything " +
+        "$packageName is on screen and is blocked in the settings: you cannot read or operate anything " +
             "while it is visible. Press back or home, and tell the user to finish this step themselves."
 
     private suspend fun targetPoint(controller: PhoneController, params: JsonObject): Pair<Float, Float> {

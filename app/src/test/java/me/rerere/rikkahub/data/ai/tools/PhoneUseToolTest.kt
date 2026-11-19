@@ -25,11 +25,14 @@ class PhoneUseToolTest {
     private val controller = FakeController(manager)
     private var selfInForeground = false
     private var floatingWindowOn = true
+    // 默认禁掉支付宝，和"用户在设置里添加了它"等价
+    private var blockedApps = setOf("com.eg.android.AlipayGphone")
     private val tool: Tool = buildPhoneUseTool(
         ownPackageName = "me.rerere.rikkahub",
         manager = manager,
         saveScreenshot = { "file:///screenshot.jpg" },
         isFloatingWindowOn = { floatingWindowOn },
+        blockedApps = { blockedApps },
         isSelfInForeground = { selfInForeground },
     )
 

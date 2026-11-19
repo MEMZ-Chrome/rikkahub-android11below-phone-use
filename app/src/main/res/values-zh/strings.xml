@@ -1832,6 +1832,11 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="assistant_page_local_tools_phone_use_screen_capture_title">屏幕捕获</string>
   <string name="assistant_page_local_tools_phone_use_screen_capture_desc">Android 11 及以下没有无障碍截图接口，授权录屏后 AI 才能截图。开启期间状态栏会一直显示录屏提示，应用重启后需要重新开启。</string>
   <string name="assistant_page_local_tools_phone_use_screen_capture_denied">屏幕捕获未开启，AI 将无法截图</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps">禁用的应用</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_desc">AI 不能打开、读取或操作这里勾选的应用。默认不限制任何应用。</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_count">已禁用 %1$d 个</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_search">搜索应用</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_empty">没有匹配的应用</string>
   <string name="phone_use_screen_capture_running">屏幕捕获已开启</string>
   <string name="phone_use_screen_capture_running_desc">Phone Use 从这次录屏中读取截图，点击返回应用。</string>
   <string name="phone_use_screen_capture_channel">Phone Use 屏幕捕获</string>

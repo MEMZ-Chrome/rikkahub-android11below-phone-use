@@ -22,6 +22,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -29,10 +33,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.rerere.ui.toast.ToastType
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Calendar03
 import me.rerere.hugeicons.stroke.Camera01
+import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.ChartLineData01
 import me.rerere.hugeicons.stroke.ClipboardPaste
 import me.rerere.hugeicons.stroke.Clock01
@@ -110,6 +116,9 @@ private fun AssistantLocalToolContent(
     val toaster = LocalToaster.current
     val navController = LocalNavController.current
     val settingsStore: SettingsStore = koinInject()
+    val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var showBlockedApps by remember { mutableStateOf(false) }
     val phoneUseManager: PhoneUseManager = koinInject()
     val phoneUseServiceOn = phoneUseManager.controller.collectAsStateWithLifecycle().value != null
     val permissionRequiredText =
@@ -337,7 +346,56 @@ private fun AssistantLocalToolContent(
                         },
                     )
                 }
+                // 哪些应用不给 AI 操作由用户自己决定，默认一个都不禁
+                if (LocalToolOption.PhoneUse in assistant.localTools) {
+                    item(
+                        onClick = { showBlockedApps = true },
+                        leadingContent = {
+                            CardGroupIcon(
+                                icon = HugeIcons.Cancel01,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        supportingContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_blocked_apps_desc))
+                        },
+                        trailingContent = {
+                            Text(
+                                text = stringResource(
+                                    R.string.assistant_page_local_tools_phone_use_blocked_apps_count,
+                                    settings.phoneUseBlockedApps.size,
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        headlineContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_blocked_apps))
+                        },
+                    )
+                }
             }
         }
+    }
+
+    if (showBlockedApps) {
+        PhoneUseBlockedAppsSheet(
+            blocked = settings.phoneUseBlockedApps.toSet(),
+            onToggle = { packageName, blocked ->
+                scope.launch {
+                    settingsStore.update { current ->
+                        current.copy(
+                            phoneUseBlockedApps = if (blocked) {
+                                (current.phoneUseBlockedApps + packageName).distinct()
+                            } else {
+                                current.phoneUseBlockedApps - packageName
+                            }
+                        )
+                    }
+                }
+            },
+            onDismiss = { showBlockedApps = false },
+        )
     }
 }

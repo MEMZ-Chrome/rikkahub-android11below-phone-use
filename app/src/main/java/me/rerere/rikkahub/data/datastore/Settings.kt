@@ -86,6 +86,8 @@ data class Settings(
     val webServerLocalhostOnly: Boolean = false,
     val backupReminderConfig: BackupReminderConfig = BackupReminderConfig(),
     val sponsorAlertDismissedAt: Int = 0,
+    // Phone Use 不允许 AI 操作的应用（包名），默认不限制；支付类应用由用户自己决定要不要禁用
+    val phoneUseBlockedApps: List<String> = emptyList(),
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储

@@ -40,6 +40,7 @@ class LocalTools(
             ownPackageName = context.packageName,
             manager = phoneUseManager,
             isFloatingWindowOn = { isFloatingChatWindowOn(context, settingsStore.settingsFlow.value) },
+            blockedApps = { settingsStore.settingsFlow.value.phoneUseBlockedApps.toSet() },
             saveScreenshot = { bytes ->
                 filesManager.createChatFilesByByteArrays(
                     byteArrays = listOf(bytes),

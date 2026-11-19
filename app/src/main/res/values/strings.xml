@@ -1830,6 +1830,11 @@
   <string name="assistant_page_local_tools_phone_use_screen_capture_title">Screen capture</string>
   <string name="assistant_page_local_tools_phone_use_screen_capture_desc">Android 11 and older has no screenshot API for accessibility services. Allow screen recording to let the AI take screenshots. The system keeps a recording notice in the status bar while this is on, and it turns off after the app restarts.</string>
   <string name="assistant_page_local_tools_phone_use_screen_capture_denied">Screen capture was not started, so the AI cannot take screenshots</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps">Blocked apps</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_desc">The AI cannot open, read or operate the apps you block here. Nothing is blocked by default.</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_count">%1$d blocked</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_search">Search apps</string>
+  <string name="assistant_page_local_tools_phone_use_blocked_apps_empty">No matching apps</string>
   <string name="phone_use_screen_capture_running">Screen capture is on</string>
   <string name="phone_use_screen_capture_running_desc">Phone Use reads screenshots from this recording. Tap to return to the app.</string>
   <string name="phone_use_screen_capture_channel">Phone Use screen capture</string>
