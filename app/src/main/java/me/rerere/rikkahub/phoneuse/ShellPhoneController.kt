@@ -65,7 +65,7 @@ class ShellPhoneController(
 
     // ---- 读取屏幕 ----
 
-    override suspend fun visiblePackages(): Set<String> = readDeviceInfo().packages
+    override suspend fun visiblePackages(): Set<String> = readDeviceInfo().packages.toSet()
 
     override suspend fun captureScreen(): PhoneScreen = withContext(Dispatchers.IO) {
         val info = readDeviceInfo()
