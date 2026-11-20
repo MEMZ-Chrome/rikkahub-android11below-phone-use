@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.rerere.common.http.await
@@ -20,8 +21,10 @@ import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.Locale
 
-private const val API_URL = "https://updates.rikka-ai.com/"
+// 只看本仓库的 release；上游用的是 updates.rikka-ai.com，包名不同装不上
+private const val API_URL = "https://api.github.com/repos/MEMZ-Chrome/rikkahub-plus/releases/latest"
 
 class UpdateChecker(
     private val client: OkHttpClient,
@@ -44,16 +47,19 @@ class UpdateChecker(
                         Request.Builder()
                             .url(API_URL)
                             .get()
+                            .addHeader("Accept", "application/vnd.github+json")
                             .addHeader(
                                 "User-Agent",
-                                "RikkaHub ${BuildConfig.VERSION_NAME} #${BuildConfig.VERSION_CODE}"
+                                "RikkaHubPlus ${BuildConfig.VERSION_NAME} #${BuildConfig.VERSION_CODE}"
                             )
                             .build()
                     ).await()
-                    if (response.isSuccessful) {
-                        json.decodeFromString<UpdateInfo>(response.body.string())
-                    } else {
-                        throw Exception("Failed to fetch update info")
+                    when {
+                        response.isSuccessful ->
+                            json.decodeFromString<GithubRelease>(response.body.string()).toUpdateInfo()
+                        // 还没发过 release，当成没有更新，不弹错误卡片
+                        response.code == 404 -> noUpdate()
+                        else -> throw Exception("Failed to fetch update info")
                     }
                 } catch (e: Exception) {
                     throw Exception("Failed to fetch update info", e)
@@ -63,6 +69,13 @@ class UpdateChecker(
     }.catch {
         emit(UiState.Error(it))
     }.flowOn(Dispatchers.IO)
+
+    private fun noUpdate() = UpdateInfo(
+        version = BuildConfig.VERSION_NAME,
+        publishedAt = "1970-01-01T00:00:00Z",
+        changelog = "",
+        downloads = emptyList(),
+    )
 
     fun downloadUpdate(context: Context, download: UpdateDownload) {
         runCatching {
@@ -104,6 +117,42 @@ data class UpdateInfo(
     val changelog: String,
     val downloads: List<UpdateDownload>
 )
+
+@Serializable
+private data class GithubRelease(
+    @SerialName("tag_name") val tagName: String,
+    @SerialName("published_at") val publishedAt: String? = null,
+    val body: String? = null,
+    val assets: List<GithubAsset> = emptyList(),
+) {
+    fun toUpdateInfo(): UpdateInfo {
+        val apks = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
+        // 有通用包就只给通用包，省得用户在三份里挑
+        val picked = apks.filter { it.name.contains("universal", ignoreCase = true) }.ifEmpty { apks }
+        return UpdateInfo(
+            version = tagName.removePrefix("v"),
+            publishedAt = publishedAt?.takeIf { it.isNotBlank() } ?: "1970-01-01T00:00:00Z",
+            changelog = body.orEmpty(),
+            downloads = picked.map {
+                UpdateDownload(name = it.name, url = it.downloadUrl, size = formatSize(it.size))
+            },
+        )
+    }
+}
+
+@Serializable
+private data class GithubAsset(
+    val name: String,
+    @SerialName("browser_download_url") val downloadUrl: String,
+    val size: Long = 0,
+)
+
+private fun formatSize(bytes: Long): String = when {
+    bytes <= 0 -> ""
+    bytes >= 1L shl 30 -> String.format(Locale.US, "%.1f GB", bytes / 1024.0 / 1024.0 / 1024.0)
+    bytes >= 1L shl 20 -> String.format(Locale.US, "%.1f MB", bytes / 1024.0 / 1024.0)
+    else -> String.format(Locale.US, "%.0f KB", bytes / 1024.0)
+}
 
 /**
  * 版本号值类，封装版本号字符串并提供比较功能

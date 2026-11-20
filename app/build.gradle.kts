@@ -25,7 +25,8 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 197
-        versionName = "3.3.0"
+        // tag 构建时由 CI 用 -PversionName 传入，保证和 release 的 tag 一致，应用内更新才比得出版本差
+        versionName = (project.findProperty("versionName") as String?) ?: "3.3.1-plus.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
