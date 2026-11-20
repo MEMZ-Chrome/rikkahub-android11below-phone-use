@@ -60,8 +60,10 @@ jobs:
         run: |
           chmod +x gradlew
           if [ -n "$TAG_VERSION" ]; then
+            echo "versionName = ${TAG_VERSION#v}"
             ./gradlew assembleGithubRelease -PversionName="${TAG_VERSION#v}" --stacktrace
           else
+            echo "versionName = (default)"
             ./gradlew assembleGithubRelease --stacktrace
           fi
 
