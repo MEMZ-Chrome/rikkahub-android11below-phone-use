@@ -2,6 +2,7 @@ package me.rerere.rikkahub.ui.pages.assistant.detail
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,6 +22,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +35,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.rerere.ui.toast.ToastType
@@ -44,6 +48,7 @@ import me.rerere.hugeicons.stroke.ClipboardPaste
 import me.rerere.hugeicons.stroke.Clock01
 import me.rerere.hugeicons.stroke.JavaScript
 import me.rerere.hugeicons.stroke.MessageQuestion
+import me.rerere.hugeicons.stroke.Settings02
 import me.rerere.hugeicons.stroke.SmartPhone01
 import me.rerere.hugeicons.stroke.Tap01
 import me.rerere.hugeicons.stroke.VolumeHigh
@@ -52,6 +57,7 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.ai.tools.local.LocalToolOption
 import me.rerere.rikkahub.data.model.Assistant
+import me.rerere.rikkahub.phoneuse.PhoneUseBackend
 import me.rerere.rikkahub.phoneuse.PhoneUseManager
 import me.rerere.rikkahub.phoneuse.isFloatingChatWindowOn
 import me.rerere.rikkahub.ui.components.nav.BackButton
@@ -71,6 +77,7 @@ import me.rerere.rikkahub.utils.openUsageAccessSettings
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
+import rikka.shizuku.Shizuku
 
 @Composable
 fun AssistantLocalToolPage(id: String) {
@@ -119,13 +126,35 @@ private fun AssistantLocalToolContent(
     val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showBlockedApps by remember { mutableStateOf(false) }
+    var showBackendSheet by remember { mutableStateOf(false) }
     val phoneUseManager: PhoneUseManager = koinInject()
-    val phoneUseServiceOn = phoneUseManager.controller.collectAsStateWithLifecycle().value != null
+    val phoneUseControllers by phoneUseManager.controllers.collectAsStateWithLifecycle()
+    val phoneUseBackend = settings.phoneUseBackend
+    // 选中的执行方式现在能不能用：无障碍服务没开、Shizuku 没授权、su 不给都会是 false
+    val phoneUseServiceOn = phoneUseControllers.containsKey(phoneUseBackend)
+    val shizukuInstalled = remember(context) {
+        runCatching { context.packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0) }.isSuccess
+    }
+
+    // 进页面探一次 Shizuku / root，用户可能刚在系统里授权过
+    LaunchedEffect(Unit) { phoneUseManager.refreshShells() }
+
+    // 用户在 Shizuku 的授权框里点了允许之后刷新状态
+    DisposableEffect(Unit) {
+        val listener = Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
+            if (requestCode == SHIZUKU_REQUEST_CODE) {
+                scope.launch { phoneUseManager.refreshShells() }
+            }
+        }
+        Shizuku.addRequestPermissionResultListener(listener)
+        onDispose { Shizuku.removeRequestPermissionResultListener(listener) }
+    }
     val permissionRequiredText =
         stringResource(R.string.assistant_page_local_tools_screen_time_permission_required)
     val floatingWindowRequiredText =
         stringResource(R.string.assistant_page_local_tools_phone_use_floating_window_required)
     val enableServiceText = stringResource(R.string.assistant_page_local_tools_phone_use_enable_service)
+    val backendNotReadyText = stringResource(R.string.assistant_page_local_tools_phone_use_backend_not_ready_toast)
     // Android 11 以下没有无障碍截图接口，用户授权录屏后才有画面
     val screenCaptureActive = phoneUseManager.screenCaptureActive.collectAsStateWithLifecycle().value
     val screenCaptureRequired = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
@@ -169,10 +198,15 @@ private fun AssistantLocalToolContent(
             navController.navigate(Screen.SettingPreferencesNotification)
             return
         }
-        // 无障碍服务还没开时带用户去系统设置，开关照常打开，开完服务就能用
+        // 选中的执行方式还没准备好：无障碍直接带去系统设置，Shizuku / root 让用户选方式或授权
         if (enabled && option == LocalToolOption.PhoneUse && !phoneUseServiceOn) {
-            toaster.show(message = enableServiceText, type = ToastType.Warning)
-            context.openAccessibilitySettings()
+            if (phoneUseBackend == PhoneUseBackend.ACCESSIBILITY) {
+                toaster.show(message = enableServiceText, type = ToastType.Warning)
+                context.openAccessibilitySettings()
+            } else {
+                toaster.show(message = backendNotReadyText, type = ToastType.Warning)
+                showBackendSheet = true
+            }
         }
         if (enabled && option == LocalToolOption.ScreenTime && !context.hasUsageStatsPermission()) {
             toaster.show(message = permissionRequiredText, type = ToastType.Warning)
@@ -301,18 +335,66 @@ private fun AssistantLocalToolContent(
                     description = {
                         Column {
                             Text(stringResource(R.string.assistant_page_local_tools_phone_use_desc))
-                            // 开了工具但服务没开时模型调用会直接报错，在这里说明原因
+                            // 开了工具但选中的执行方式用不了时模型调用会直接报错，在这里说明原因
                             if (LocalToolOption.PhoneUse in assistant.localTools && !phoneUseServiceOn) {
                                 Text(
-                                    text = stringResource(R.string.assistant_page_local_tools_phone_use_service_off),
+                                    text = stringResource(
+                                        if (phoneUseBackend == PhoneUseBackend.ACCESSIBILITY) {
+                                            R.string.assistant_page_local_tools_phone_use_service_off
+                                        } else {
+                                            R.string.assistant_page_local_tools_phone_use_backend_off
+                                        }
+                                    ),
                                     color = MaterialTheme.colorScheme.error,
                                 )
                             }
                         }
                     },
                 )
-                // Android 11 以下没有无障碍截图接口，在这里让用户手动授权录屏取帧
-                if (screenCaptureRequired && LocalToolOption.PhoneUse in assistant.localTools) {
+                // 怎么操作手机：无障碍、Shizuku、root 三选一
+                if (LocalToolOption.PhoneUse in assistant.localTools) {
+                    item(
+                        onClick = { showBackendSheet = true },
+                        leadingContent = {
+                            CardGroupIcon(
+                                icon = HugeIcons.Settings02,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        supportingContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_backend_desc))
+                        },
+                        trailingContent = {
+                            Text(
+                                text = when (phoneUseBackend) {
+                                    PhoneUseBackend.ACCESSIBILITY ->
+                                        stringResource(R.string.assistant_page_local_tools_phone_use_backend_accessibility)
+
+                                    PhoneUseBackend.SHIZUKU ->
+                                        stringResource(R.string.assistant_page_local_tools_phone_use_backend_shizuku)
+
+                                    PhoneUseBackend.ROOT ->
+                                        stringResource(R.string.assistant_page_local_tools_phone_use_backend_root)
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (phoneUseServiceOn) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                            )
+                        },
+                        headlineContent = {
+                            Text(stringResource(R.string.assistant_page_local_tools_phone_use_backend))
+                        },
+                    )
+                }
+                // Android 11 以下没有无障碍截图接口，在这里让用户手动授权录屏取帧；
+                // Shizuku / root 用 screencap，不需要这个
+                if (screenCaptureRequired && LocalToolOption.PhoneUse in assistant.localTools &&
+                    phoneUseBackend == PhoneUseBackend.ACCESSIBILITY
+                ) {
                     switchItem(
                         checked = screenCaptureActive,
                         onCheckedChange = { enabled ->
@@ -398,4 +480,51 @@ private fun AssistantLocalToolContent(
             onDismiss = { showBlockedApps = false },
         )
     }
+
+    if (showBackendSheet) {
+        PhoneUseBackendSheet(
+            selected = phoneUseBackend,
+            controllers = phoneUseControllers,
+            shizukuInstalled = shizukuInstalled,
+            onSelect = { backend ->
+                showBackendSheet = false
+                scope.launch {
+                    settingsStore.update { it.copy(phoneUseBackend = backend) }
+                    // 换完立刻探一次，返回页面时状态就是准的
+                    phoneUseManager.refreshShells()
+                }
+            },
+            onOpenAccessibility = {
+                showBackendSheet = false
+                context.openAccessibilitySettings()
+            },
+            onAuthorizeShizuku = {
+                showBackendSheet = false
+                // 没装或者没启动时 requestPermission 会抛，提示用户先开 Shizuku
+                val requested = runCatching { Shizuku.requestPermission(SHIZUKU_REQUEST_CODE) }.isSuccess
+                if (!requested) {
+                    toaster.show(message = backendNotReadyText, type = ToastType.Warning)
+                }
+            },
+            onInstallShizuku = {
+                showBackendSheet = false
+                runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, SHIZUKU_URL.toUri())
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            },
+            // root 要重新问一次 su，用户可能刚在 root 管理里点了允许
+            onRecheck = {
+                showBackendSheet = false
+                scope.launch { phoneUseManager.refreshShells(force = true) }
+            },
+            onDismiss = { showBackendSheet = false },
+        )
+    }
 }
+
+private const val SHIZUKU_REQUEST_CODE = 4213
+private const val SHIZUKU_PACKAGE = "moe.shizuku.manager"
+private const val SHIZUKU_URL = "https://shizuku.rikka.app/"

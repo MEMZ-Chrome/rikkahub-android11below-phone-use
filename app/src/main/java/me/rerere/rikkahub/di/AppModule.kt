@@ -21,6 +21,7 @@ import me.rerere.rikkahub.utils.SoundEffectPlayer
 import me.rerere.rikkahub.utils.UpdateChecker
 import me.rerere.rikkahub.web.WebServerManager
 import me.rerere.tts.provider.TTSManager
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val appModule = module {
@@ -31,7 +32,8 @@ val appModule = module {
     }
 
     single {
-        PhoneUseManager()
+        // Shizuku / root 执行端要用包管理器和剪贴板
+        PhoneUseManager(androidContext())
     }
 
     single {

@@ -10,7 +10,20 @@
   <!-- Android 11 以下 Phone Use 用录屏取帧代替无障碍截图 -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
+  <!-- Phone Use 的 Shizuku 执行方式：由 Shizuku 授予 adb 级 shell 权限 -->
+  <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
   <application>
+    <!-- Shizuku 通过这个 provider 把 binder 交给本应用，包名后缀由 Shizuku 约定；
+         INTERACT_ACROSS_USERS_FULL 是官方推荐，防止普通应用访问这个 provider -->
+    <provider
+      android:name="rikka.shizuku.ShizukuProvider"
+      android:authorities="${applicationId}.shizuku"
+      android:enabled="true"
+      android:exported="true"
+      android:multiprocess="false"
+      android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
     <!-- Phone Use：只在 github 渠道声明，Play 不允许用无障碍服务做自动化 -->
     <service
       android:name=".phoneuse.PhoneUseAccessibilityService"

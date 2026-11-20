@@ -24,6 +24,7 @@ import me.rerere.rikkahub.phoneuse.PhoneController
 import me.rerere.rikkahub.phoneuse.PhoneElement
 import me.rerere.rikkahub.phoneuse.PhoneKey
 import me.rerere.rikkahub.phoneuse.PhoneScreen
+import me.rerere.rikkahub.phoneuse.PhoneUseBackend
 import me.rerere.rikkahub.phoneuse.PhoneUseManager
 
 const val PHONE_USE_TOOL_NAME = "phone_use"
@@ -54,6 +55,7 @@ fun phoneUseActionOf(input: String): String? = runCatching {
 /**
  * [saveScreenshot] 把 JPEG 存成聊天文件并返回地址；[isSelfInForeground] 判断本应用是否在前台，单测里替换。
  * [blockedApps] 是用户在设置里禁用的包名，每次调用时重新读取；默认不限制任何应用。
+ * [backend] 是用户选的执行方式（无障碍 / Shizuku / root），同样每次调用时重新读取。
  */
 internal fun buildPhoneUseTool(
     ownPackageName: String,
@@ -62,9 +64,11 @@ internal fun buildPhoneUseTool(
     isFloatingWindowOn: () -> Boolean,
     blockedApps: () -> Set<String> = { emptySet() },
     isSelfInForeground: suspend () -> Boolean = ::isAppInForeground,
+    backend: () -> PhoneUseBackend = { PhoneUseBackend.ACCESSIBILITY },
 ): Tool {
-    val session =
-        PhoneUseSession(ownPackageName, manager, saveScreenshot, isFloatingWindowOn, blockedApps, isSelfInForeground)
+    val session = PhoneUseSession(
+        ownPackageName, manager, saveScreenshot, isFloatingWindowOn, blockedApps, isSelfInForeground, backend
+    )
     return Tool(
         name = PHONE_USE_TOOL_NAME,
         description = """
@@ -144,6 +148,7 @@ private class PhoneUseSession(
     private val isFloatingWindowOn: () -> Boolean,
     private val blockedApps: () -> Set<String>,
     private val isSelfInForeground: suspend () -> Boolean,
+    private val backend: () -> PhoneUseBackend,
 ) {
     // 模型可能一次发出多个调用，手势和元素编号都依赖顺序
     private val mutex = Mutex()
@@ -157,8 +162,21 @@ private class PhoneUseSession(
             "The background floating window is turned off, so the user cannot watch or stop you. " +
                 "Ask them to turn it on in Settings > Notifications (and grant the overlay permission) first."
         }
-        val controller = manager.controller.value ?: error(
-            "Phone Use is not enabled. Ask the user to turn on \"RikkaHub Phone Use\" in the system accessibility settings."
+        val selected = backend()
+        val controller = manager.controllerFor(selected) ?: error(
+            when (selected) {
+                PhoneUseBackend.ACCESSIBILITY ->
+                    "Phone Use is not enabled. Ask the user to turn on \"RikkaHub Phone Use\" " +
+                        "in the system accessibility settings."
+
+                PhoneUseBackend.SHIZUKU ->
+                    "Shizuku is not available. Ask the user to install and start Shizuku, " +
+                        "authorize this app in it, then pick Shizuku again in Settings > Assistant > Local tools."
+
+                PhoneUseBackend.ROOT ->
+                    "Root is not available. Ask the user to grant root access to this app, " +
+                        "or switch Phone Use to another backend in Settings > Assistant > Local tools."
+            }
         )
         when (val action = params.string("action") ?: error("action is required")) {
             "list_apps" -> {
@@ -206,8 +224,8 @@ private class PhoneUseSession(
 
             "screenshot" -> {
                 ensureOperable(controller)
-                // Android 11 以下没有无障碍截图接口，要用户额外开着录屏才有画面
-                check(manager.screenshotAvailable) {
+                // 无障碍截图要 Android 11+，更低的版本要用户额外开着录屏；shell 方式一直能截
+                check(controller.canScreenshot) {
                     "Screenshots are not available on this phone. Use observe and work from the element list instead."
                 }
                 val screen = capture(controller)

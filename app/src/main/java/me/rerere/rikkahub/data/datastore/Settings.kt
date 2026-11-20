@@ -19,6 +19,7 @@ import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.data.model.QuickMessage
 import me.rerere.rikkahub.data.model.Tag
 import me.rerere.rikkahub.data.sync.s3.S3Config
+import me.rerere.rikkahub.phoneuse.PhoneUseBackend
 import me.rerere.rikkahub.ui.theme.CustomTheme
 import me.rerere.rikkahub.ui.theme.PresetThemes
 import me.rerere.search.SearchCommonOptions
@@ -88,6 +89,8 @@ data class Settings(
     val sponsorAlertDismissedAt: Int = 0,
     // Phone Use 不允许 AI 操作的应用（包名），默认不限制；支付类应用由用户自己决定要不要禁用
     val phoneUseBlockedApps: List<String> = emptyList(),
+    // Phone Use 的执行方式：无障碍服务、Shizuku、root
+    val phoneUseBackend: PhoneUseBackend = PhoneUseBackend.ACCESSIBILITY,
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储

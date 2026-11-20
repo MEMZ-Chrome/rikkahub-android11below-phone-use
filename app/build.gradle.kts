@@ -197,6 +197,9 @@ configurations.matching { it.name.endsWith("UnitTestRuntimeClasspath") }.configu
 
 dependencies {
     implementation(libs.quickjs)
+    // Phone Use 的 Shizuku 执行方式：api 是客户端，provider 负责接收 Shizuku 传来的 binder
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.process)

@@ -254,7 +254,9 @@ class PhoneUseToolTest {
         // 最上层的在前
         var visible = listOf("com.demo")
 
-        override fun visiblePackages() = visible.toSet()
+        override val canScreenshot = true
+
+        override suspend fun visiblePackages() = visible.toSet()
 
         override suspend fun captureScreen() = PhoneScreen(
             packageName = visible.first(),
@@ -295,7 +297,7 @@ class PhoneUseToolTest {
             PhoneApp("com.eg.android.AlipayGphone", "Alipay"),
         )
 
-        override fun openApp(packageName: String): Boolean {
+        override suspend fun openApp(packageName: String): Boolean {
             opened += packageName
             return true
         }

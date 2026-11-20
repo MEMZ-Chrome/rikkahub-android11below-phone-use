@@ -41,6 +41,8 @@ class LocalTools(
             manager = phoneUseManager,
             isFloatingWindowOn = { isFloatingChatWindowOn(context, settingsStore.settingsFlow.value) },
             blockedApps = { settingsStore.settingsFlow.value.phoneUseBlockedApps.toSet() },
+            // 用户可能随时在设置里换执行方式，每次调用现读
+            backend = { settingsStore.settingsFlow.value.phoneUseBackend },
             saveScreenshot = { bytes ->
                 filesManager.createChatFilesByByteArrays(
                     byteArrays = listOf(bytes),
