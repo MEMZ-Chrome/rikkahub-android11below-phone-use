@@ -6,7 +6,6 @@ import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import java.util.concurrent.TimeUnit
 
 /** 一条 shell 命令的结果，输出按 UTF-8 解码；[code] 是 -1 表示超时被杀 */
 data class ShellResult(val code: Int, val stdout: String, val stderr: String) {
@@ -43,22 +42,42 @@ internal class ProcessOutput(val code: Int, val stdout: ByteArray, val stderr: B
 /**
  * 等进程结束并收走输出。两条流各开一个线程读，否则管道写满会互相卡死；
  * 超时就强杀，[ProcessOutput.code] 给 -1。
+ *
+ * 不能用 [Process.waitFor]：它内部只把 IllegalThreadStateException 当成「还没结束」，
+ * 而 Shizuku 的远程进程在没结束时抛的是 IllegalArgumentException("process hasn't exited")，
+ * 于是 waitFor 一进去就炸（连 waitFor() 无参版本也一样），只能自己轮询退出码。
  */
 internal fun Process.awaitOutput(timeoutMs: Long): ProcessOutput {
     val stdout = ByteArrayOutputStream()
     val stderr = ByteArrayOutputStream()
     val stdoutReader = drain(inputStream, stdout)
     val stderrReader = drain(errorStream, stderr)
-    val finished = try {
-        waitFor(timeoutMs, TimeUnit.MILLISECONDS)
-    } catch (_: InterruptedException) {
-        false
+    val deadline = System.nanoTime() + timeoutMs * 1_000_000
+    var code: Int? = null
+    // 短命令 10ms 一次就能立刻发现结束，长命令退到 100ms，避免一直打 binder
+    var intervalMs = 10L
+    while (System.nanoTime() < deadline) {
+        code = exitCodeOrNull()
+        if (code != null) break
+        try {
+            Thread.sleep(intervalMs)
+        } catch (_: InterruptedException) {
+            break
+        }
+        if (intervalMs < 100) intervalMs += 10
     }
-    if (!finished) destroyForcibly()
+    if (code == null) runCatching { destroyForcibly() }
     // 进程没了流就会关，读取线程很快退出；这里只是等它们把缓冲区写完
     stdoutReader.join(1_000)
     stderrReader.join(1_000)
-    return ProcessOutput(if (finished) exitValue() else -1, stdout.toByteArray(), stderr.toByteArray())
+    return ProcessOutput(code ?: -1, stdout.toByteArray(), stderr.toByteArray())
+}
+
+/** 退出码，还在跑（或通道出问题）时给 null */
+private fun Process.exitCodeOrNull(): Int? = try {
+    exitValue()
+} catch (_: Exception) {
+    null
 }
 
 private fun drain(input: InputStream, sink: ByteArrayOutputStream): Thread = Thread {
