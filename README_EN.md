@@ -35,6 +35,12 @@ Only the additions are listed here.
   (Settings → Assistant → Local tools → Phone Use → Screen capture). A recording notice stays in the status
   bar while it is on; turning the switch off or restarting the app stops it.
 
+- 🔓 **Phone Use with Shizuku and root**
+  Besides the accessibility service, Phone Use can drive the phone through Shizuku (adb-level permissions)
+  or root (su), so the accessibility service can stay off.
+  Settings → Assistant → Local tools → Phone Use → Execution method.
+  With these two, non-ASCII text is typed by pasting from the clipboard, which a few apps do not accept.
+
 - 🚫 **Configurable blocked apps**
   Upstream hard-codes a payment/banking blocklist (including WeChat) with no way to turn it off. Here nothing
   is blocked by default: pick the apps you want to block in Settings → Assistant → Local tools → Phone Use →
