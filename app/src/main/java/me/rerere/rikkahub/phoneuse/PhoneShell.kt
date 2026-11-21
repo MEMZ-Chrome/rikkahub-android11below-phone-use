@@ -66,7 +66,11 @@ internal fun Process.awaitOutput(timeoutMs: Long): ProcessOutput {
         }
         if (intervalMs < 100) intervalMs += 10
     }
-    if (code == null) runCatching { destroyForcibly() }
+    if (code == null) {
+        // 再确认一次，别刚好卡在超时边界上把已经退出的进程杀掉
+        code = exitCodeOrNull()
+        if (code == null) runCatching { destroyForcibly() }
+    }
     // 进程没了流就会关，读取线程很快退出；这里只是等它们把缓冲区写完
     stdoutReader.join(1_000)
     stderrReader.join(1_000)
