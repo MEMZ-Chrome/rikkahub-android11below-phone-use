@@ -87,11 +87,13 @@ jobs:
         id: changes
         run: |
           prev=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)
+          # ci / release 这类提交用户看不着，不写进「新增内容」
+          filter='^- (ci|release)(\(|:)'
           if [ -n "$prev" ]; then
-            commits=$(git log --no-merges --pretty='- %s' "$prev..${{ github.ref_name }}")
+            commits=$(git log --no-merges --pretty='- %s' "$prev..${{ github.ref_name }}" | grep -viE "$filter" || true)
             echo "previous tag: $prev"
           else
-            commits=$(git log --no-merges --pretty='- %s' "${{ github.ref_name }}")
+            commits=$(git log --no-merges --pretty='- %s' "${{ github.ref_name }}" | grep -viE "$filter" || true)
             echo "previous tag: none"
           fi
           if [ -z "$commits" ]; then
