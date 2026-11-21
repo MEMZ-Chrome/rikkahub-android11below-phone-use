@@ -153,7 +153,7 @@ private fun AssistantLocalToolContent(
         stringResource(R.string.assistant_page_local_tools_screen_time_permission_required)
     val floatingWindowRequiredText =
         stringResource(R.string.assistant_page_local_tools_phone_use_floating_window_required)
-    val enableServiceText = stringResource(R.string.assistant_page_local_tools_phone_use_enable_service)
+    val chooseBackendText = stringResource(R.string.assistant_page_local_tools_phone_use_choose_backend)
     val backendNotReadyText = stringResource(R.string.assistant_page_local_tools_phone_use_backend_not_ready_toast)
     // Android 11 以下没有无障碍截图接口，用户授权录屏后才有画面
     val screenCaptureActive = phoneUseManager.screenCaptureActive.collectAsStateWithLifecycle().value
@@ -198,15 +198,11 @@ private fun AssistantLocalToolContent(
             navController.navigate(Screen.SettingPreferencesNotification)
             return
         }
-        // 选中的执行方式还没准备好：无障碍直接带去系统设置，Shizuku / root 让用户选方式或授权
+        // 打开 Phone Use 时先让用户挑执行方式，别一上来就把人丢进无障碍设置；
+        // 挑完在弹层里再去开对应的权限
         if (enabled && option == LocalToolOption.PhoneUse && !phoneUseServiceOn) {
-            if (phoneUseBackend == PhoneUseBackend.ACCESSIBILITY) {
-                toaster.show(message = enableServiceText, type = ToastType.Warning)
-                context.openAccessibilitySettings()
-            } else {
-                toaster.show(message = backendNotReadyText, type = ToastType.Warning)
-                showBackendSheet = true
-            }
+            toaster.show(message = chooseBackendText, type = ToastType.Warning)
+            showBackendSheet = true
         }
         if (enabled && option == LocalToolOption.ScreenTime && !context.hasUsageStatsPermission()) {
             toaster.show(message = permissionRequiredText, type = ToastType.Warning)

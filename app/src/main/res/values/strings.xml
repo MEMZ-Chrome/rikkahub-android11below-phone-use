@@ -1839,6 +1839,7 @@
   <string name="assistant_page_local_tools_phone_use_backend_not_ready">Not available</string>
   <string name="assistant_page_local_tools_phone_use_backend_off">The selected execution method is not available. Tap the row above to pick another one or finish its setup.</string>
   <string name="assistant_page_local_tools_phone_use_backend_not_ready_toast">The selected execution method is not ready yet</string>
+  <string name="assistant_page_local_tools_phone_use_choose_backend">Choose how Phone Use should control the phone first</string>
   <string name="assistant_page_local_tools_phone_use_backend_authorize">Authorize in Shizuku</string>
   <string name="assistant_page_local_tools_phone_use_backend_install_shizuku">Get Shizuku</string>
   <string name="assistant_page_local_tools_phone_use_backend_recheck">Check root again</string>

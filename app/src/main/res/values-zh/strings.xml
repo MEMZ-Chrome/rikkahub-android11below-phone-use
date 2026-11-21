@@ -1838,6 +1838,7 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="assistant_page_local_tools_phone_use_backend_not_ready">不可用</string>
   <string name="assistant_page_local_tools_phone_use_backend_off">选中的执行方式现在用不了，点上面的「执行方式」换一个或者先完成它的准备。</string>
   <string name="assistant_page_local_tools_phone_use_backend_not_ready_toast">选中的执行方式还没准备好</string>
+  <string name="assistant_page_local_tools_phone_use_choose_backend">先选一种方式，Phone Use 才能操作手机</string>
   <string name="assistant_page_local_tools_phone_use_backend_authorize">在 Shizuku 中授权</string>
   <string name="assistant_page_local_tools_phone_use_backend_install_shizuku">获取 Shizuku</string>
   <string name="assistant_page_local_tools_phone_use_backend_recheck">重新检测 root</string>
